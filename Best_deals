@@ -1,0 +1,52 @@
+import requests
+
+# Walmart API Configuration
+WALMART_API_KEY = "YOUR_WALMART_API_KEY"  # Replace with your key
+WALMART_URL = "https://developer.walmart.com/api-proxy/service/affil/product/v2/search"
+
+# Target API Configuration (Using RapidAPI)
+TARGET_API_KEY = "YOUR_RAPIDAPI_KEY"  # Replace with your key
+TARGET_URL = "https://target-data.p.rapidapi.com/products/v3/search"
+TARGET_HEADERS = {
+    "X-RapidAPI-Key": TARGET_API_KEY,
+    "X-RapidAPI-Host": "target-data.p.rapidapi.com"
+}
+
+def get_walmart_price(product):
+    """Fetch the best price from Walmart for a given product"""
+    params = {"query": product, "format": "json", "apiKey": WALMART_API_KEY}
+    response = requests.get(WALMART_URL, params=params).json()
+    
+    if "items" in response and len(response["items"]) > 0:
+        item = response["items"][0]  # First search result
+        return {"store": "Walmart", "name": item["name"], "price": item.get("salePrice", "N/A"), "link": item["productUrl"]}
+    
+    return None
+
+def get_target_price(product):
+    """Fetch the best price from Target for a given product"""
+    params = {"query": product}
+    response = requests.get(TARGET_URL, headers=TARGET_HEADERS, params=params).json()
+
+    if "products" in response and len(response["products"]) > 0:
+        item = response["products"][0]  # First search result
+        return {"store": "Target", "name": item["title"], "price": item["price"]["current_retail"], "link": item["url"]}
+    
+    return None
+
+def find_best_deal(product):
+    """Compare Walmart and Target prices and return the best deal"""
+    walmart_deal = get_walmart_price(product)
+    target_deal = get_target_price(product)
+
+    deals = [deal for deal in [walmart_deal, target_deal] if deal and deal["price"] != "N/A"]
+    
+    if not deals:
+        return "No deals found for this product."
+
+    best_deal = min(deals, key=lambda x: x["price"])  # Find lowest price
+    return f"Best Deal: {best_deal['store']} - {best_deal['name']} - ${best_deal['price']} \nLink: {best_deal['link']}"
+
+# User Input
+product_name = input("Enter the product name: ")
+print(find_best_deal(product_name))
